@@ -130,7 +130,7 @@ class OpenApiSchemaGenerator(SchemaGenerator):
         for path, method, view in view_endpoints:
             if not self.has_view_permissions(path, method, view):
                 continue
-            link = self.get_link(path, method, view, version=request.version)
+            link = self.get_link(path, method, view, version=self.version)
             subpath = path[len(prefix):]
             keys = self.get_keys(subpath, method, view)
             try:

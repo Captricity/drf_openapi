@@ -149,32 +149,19 @@ def _get_parameters(link, encoding):
 
     for field in link.fields:
         location = get_location(link, field)
-        field_description = _get_field_description(field)
-        field_type = _get_field_type(field)
+        parameter = _get_field_base_properties(field)
+
         if location == 'form':
             if encoding in ('multipart/form-data', 'application/x-www-form-urlencoded'):
                 # 'formData' in swagger MUST be one of these media types.
-                parameter = {
-                    'name': field.name,
-                    'required': field.required,
-                    'in': 'formData',
-                    'description': field_description,
-                    'type': field_type,
-                }
-                if field_type == 'array':
-                    parameter['items'] = {'type': _get_field_type(field.schema.items)}
+                parameter['name'] = field.name
+                parameter['required'] = field.required
+                parameter['in'] = 'formData'
                 parameters.append(parameter)
             else:
                 # Expand coreapi fields with location='form' into a single swagger
                 # parameter, with a schema containing multiple properties.
-
-                schema_property = {
-                    'description': field_description,
-                    'type': field_type,
-                }
-                if field_type == 'array':
-                    schema_property['items'] = {'type': _get_field_type(field.schema.items)}
-                properties[field.name] = schema_property
+                properties[field.name] = parameter
                 if field.required:
                     required.append(field.name)
         elif location == 'body':
@@ -187,20 +174,14 @@ def _get_parameters(link, encoding):
                 'name': field.name,
                 'required': field.required,
                 'in': location,
-                'description': field_description,
+                'description': parameter['description'],
                 'schema': schema
             }
             parameters.append(parameter)
         else:
-            parameter = {
-                'name': field.name,
-                'required': field.required,
-                'in': location,
-                'description': field_description,
-                'type': field_type or 'string',
-            }
-            if field_type == 'array':
-                parameter['items'] = {'type': _get_field_type(field.schema.items)}
+            parameter['name'] = field.name
+            parameter['required'] = field.required
+            parameter['in'] = location
             parameters.append(parameter)
 
     if properties:
@@ -217,3 +198,28 @@ def _get_parameters(link, encoding):
         parameters.append(parameter)
 
     return parameters
+
+
+def _get_field_base_properties(field):
+    field_description = _get_field_description(field)
+    field_type = _get_field_type(field)
+    if hasattr(field, 'schema'):
+        schema = field.schema
+    else:
+        schema = field
+    base_prop = {
+        'description': field_description,
+        'type': field_type or 'string'
+    }
+    if field_type == 'array':
+        base_prop['items'] = _get_field_base_properties(field.schema.items)
+    extended_properties = ['minimum', 'maximum', 'pattern', 'min_length', 'max_length', 'enum']
+    for prop in extended_properties:
+        if hasattr(schema, prop) and getattr(schema, prop):
+            base_prop[to_camel_case(prop)] = getattr(schema, prop)
+    return base_prop
+
+
+def to_camel_case(snake_str):
+    components = snake_str.split('_')
+    return components[0] + "".join(x.title() for x in components[1:])

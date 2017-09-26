@@ -226,6 +226,7 @@ class OpenApiSchemaGenerator(SchemaGenerator):
         Return a list of `coreapi.Field` instances corresponding to any
         templated path variables.
         """
+        from drf_openapi.utils import is_string_or_bytes
         model = getattr(getattr(view, 'queryset', None), 'model', None)
         fields = []
 
@@ -246,10 +247,18 @@ class OpenApiSchemaGenerator(SchemaGenerator):
                     model_field = None
 
                 if model_field is not None and model_field.verbose_name:
-                    title = force_text(model_field.verbose_name)
+                    # Handle django lazy strings
+                    verbose_name = model_field.verbose_name
+                    if not is_string_or_bytes(verbose_name):
+                        verbose_name = str(verbose_name)
+                    title = force_text(verbose_name)
 
                 if model_field is not None and model_field.help_text:
-                    description = force_text(model_field.help_text)
+                    # Handle django lazy strings
+                    help_text = model_field.help_text
+                    if not is_string_or_bytes(help_text):
+                        help_text = str(help_text)
+                    description = force_text(help_text)
                 elif model_field is not None and model_field.primary_key:
                     description = get_pk_description(model, model_field)
 

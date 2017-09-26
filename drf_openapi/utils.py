@@ -36,3 +36,11 @@ def view_config(request_serializer=None, response_serializer=None, validate_resp
     decorator.__annotations__ = {'view_method': Callable, 'return': Callable}
     return decorator
 view_config.__annotations__ = {'return': Callable}
+
+
+def is_string_or_bytes(val):
+    if issubclass(type(val), str):
+        return True
+    if isinstance(val, bytes):
+        return True
+    return False
